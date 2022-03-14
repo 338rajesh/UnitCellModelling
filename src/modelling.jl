@@ -15,7 +15,7 @@ Returns a julia dictionary with the following key-value pairs
 
 
 """
-function modelling(
+function create(
     unit_cell::AbstractUnitCell,
     options::Union{Tuple,Dict{Symbol,Any}} = ()
 )::Dict{String,Any}
