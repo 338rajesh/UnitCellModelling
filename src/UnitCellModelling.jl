@@ -8,6 +8,7 @@ using StaticArrays
 include("ucmBase.jl")
 include("gshapes.jl")
 include("geometric_modelling.jl")
+include("meshing.jl")
 
 """
     modelling() -> Dict
@@ -86,8 +87,14 @@ function create(
     #       EXPort
     # ---------------------
 
-    export_geometry(geom_export_paths)
+    # exporting UC model to the specified fomats
+    if !isempty(geom_export_paths)
+        for a_export_path in geom_export_paths
+            gmsh.write(a_export_path)
+        end
+    end
 
+    # 
     model_data::Dict{String,Any} = Dict{String,Any}()
     model_data["mesh_data"] = get_mesh_data(unit_cell, ucp_geom_tags)  # Dict{String, Any}
     if show_rve

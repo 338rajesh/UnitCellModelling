@@ -164,7 +164,7 @@ function geometric_model(
     extr_dir::String,
     extr_dir_num_ele::Vector{Int64},
     extr_dir_cum_heights::Vector{Float64},
-    extr_dir_recombine_ele::Vector{Float64},
+    extr_dir_recombine_ele::Bool,
 )::Vector{Int}
     uc_cross_section_surfaces = make_udc_transverse_section(uc)
     if isa(uc, UDC2D)
