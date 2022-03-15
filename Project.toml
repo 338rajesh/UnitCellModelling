@@ -4,6 +4,7 @@ authors = ["Rajesh Nakka"]
 version = "0.1.0"
 
 [deps]
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 gmsh = "93d0bc29-614b-4a6d-9b70-ef8786ec1f3c"
 

@@ -1,6 +1,8 @@
 module UnitCellModelling
 
 using gmsh
+using Parameters
+using StaticArrays
 # using 
 
 include("ucmBase.jl")
@@ -83,7 +85,7 @@ function create(
     # ---------------------
     #       EXPort
     # ---------------------
-    
+
     export_geometry(geom_export_paths)
 
     model_data::Dict{String,Any} = Dict{String,Any}()
