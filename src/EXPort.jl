@@ -68,10 +68,10 @@ end
 
 
 function export_geometry(
-    options::Dict
+    geom_export_paths::Tuple{Vararg{String}}
 )
-    if :geom_export_paths in keys(options)
-        for a_export_path in options[:geom_export_paths]
+    if !isempty(geom_export_paths)
+        for a_export_path in geom_export_paths
             gmsh.write(a_export_path)
         end
     end

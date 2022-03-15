@@ -170,27 +170,34 @@ function write_mesh_statistics(dim::Int64=-1)
     println(repeat("=", 50))
 end
 
+#  , , , mesh_min_size, mesh_max_size, mesh_opt_algorithm, show_mesh_stats
 
 function generate_mesh(
     uc::AbstractUnitCell,
-    options::Dict{Symbol, Any},
+    mesh_periodicity::Bool,
+    element_types::Tuple{Vararg{Symbol}},
+    extr_dir_num_ele::Vector{Int64},
+    min_ele_size::Float64,
+    max_ele_size::Float64,
+    mesh_opt_algorithm::String,
+    show_mesh_stats::Bool,
 )
     #
-    if options[:mesh_periodicity]
+    if mesh_periodicity
         apply_mesh_periodicity_constraints(uc)
     end
     #
     element_types = begin
-        if (options[:element_types][1:end] == (:DEFAULT, ) )
+        if (element_types[1:end] == (:DEFAULT, ) )
             if isa(uc, UDC2D)
                 (CPS3,)
             elseif isa(uc, UDC3D)
-                isempty(options[:num_ele_in_extr_dir]) ? (C3D4,) : (C3D6, C3D8,)
+                isempty(extr_dir_num_ele) ? (C3D4,) : (C3D6, C3D8,)
             elseif isa(uc, PRC)
                 (C3D4,)
             end            
         else
-            options[:element_types]
+            element_types
         end    
     end
     # 
@@ -204,17 +211,17 @@ function generate_mesh(
         gmsh.option.set_number("Mesh.RecombinationAlgorithm", 3)
     end
     #
-    gmsh.option.set_number("Mesh.MeshSizeMin", options[:mesh_min_size])
-    gmsh.option.set_number("Mesh.MeshSizeMax", options[:mesh_max_size])
+    gmsh.option.set_number("Mesh.MeshSizeMin", min_ele_size)
+    gmsh.option.set_number("Mesh.MeshSizeMax", max_ele_size)
     #
     gmsh.model.mesh.generate(dimension(uc))
-    gmsh.model.mesh.optimize(options[:mesh_opt_algorithm], true)
+    gmsh.model.mesh.optimize(mesh_opt_algorithm, true)
     gmsh.model.mesh.remove_duplicate_nodes()
     gmsh.model.mesh.renumber_nodes()
     #
     check_generated_ele_types(element_types, dimension(uc))
     #
-    if options[:show_mesh_stats]
+    if show_mesh_stats
         write_mesh_statistics()
     end
     #

@@ -161,27 +161,30 @@ end
 
 function geometric_model(
     uc::UDC,
-    options::Dict{Symbol,Any},
+    extr_dir::String,
+    extr_dir_num_ele::Vector{Int64},
+    extr_dir_cum_heights::Vector{Float64},
+    extr_dir_recombine_ele::Vector{Float64},
 )::Vector{Int}
     uc_cross_section_surfaces = make_udc_transverse_section(uc)
     if isa(uc, UDC2D)
         return uc_cross_section_surfaces
     else
-        if options[:extrusion_direction] == "XY->Z"
+        if extr_dir == "XY->Z"
             dx, dy, dz = 0.0, 0.0, uc.bbox.zub - uc.bbox.zlb
-        elseif options[:extrusion_direction] == "ZX->Y"
+        elseif extr_dir == "ZX->Y"
             dx, dy, dz = 0.0, uc.bbox.yub - uc.bbox.ylb, 0.0
-        elseif options[:extrusion_direction] == "YZ->X"
+        elseif extr_dir == "YZ->X"
             dx, dy, dz = uc.bbox.xub - uc.bbox.xlb, 0.0, 0.0
         end
         extrude_dimTags = begin
-            if !isempty(options[:num_ele_in_extr_dir])
+            if !isempty(extr_dir_num_ele)
                 gmsh.model.occ.extrude(
                     [(2, i) for i in uc_cross_section_surfaces],
                     dx, dy, dz,
-                    options[:num_ele_in_extr_dir],
-                    options[:cum_heights],
-                    options[:recombine_ele_in_extr_dir],
+                    extr_dir_num_ele,
+                    extr_dir_cum_heights,
+                    extr_dir_recombine_ele,
                 )
             else
                 gmsh.model.occ.extrude(

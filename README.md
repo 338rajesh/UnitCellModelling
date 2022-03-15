@@ -4,31 +4,30 @@ This module is intended to perform geometric modelling and meshing of an Unit Ce
 
 It exports a single function `create()` which takes the following two arguments.
 
- 1. `unit_cell::AbstractUnitCell`.
+## Arguments
 
-    * `UDC2D <: AbstractUnitCell`
-    * `UDC3D <: AbstractUnitCell`
-    * `PRC <: AbstractUnitCell`
-    * `UDC = Union{UDC2D, UDC3D}`
-    * `UnitCell3D = Union{UDC3D, PRC}`
+1. `unit_cell::AbstractUnitCell`, where
+   * `UDC2D <: AbstractUnitCell`
+   * `UDC3D <: AbstractUnitCell`
+   * `PRC <: AbstractUnitCell`
+   * `UDC = Union{UDC2D, UDC3D}`
+   * `UnitCell3D = Union{UDC3D, PRC}`
 
- 2. `options::Union{Tuple,Dict{Symbol,Any}} = ()`, By default the following key-value pairs will be used as options
+## Keyword Arguments
 
-    ```julia
-    :small_parameter => 1e-06,
-    :geom_export_paths => (joinpath(homedir(), "unit_cell.step"),),
-    :extrusion_direction => "XY->Z",
-    :mesh_periodicity => true,
-    :element_types => (:DEFAULT,),
-    :num_ele_in_extr_dir => Int64[],
-    :cum_heights => Float64[],
-    :recombine_ele_in_extr_dir => true,
-    :mesh_min_size_factor => 2.0,
-    :mesh_max_size_factor => 1.0,
-    :mesh_opt_algorithm => "Netgen",
-    :show_mesh_stats => true,
-    :show_rve => true,
-    ```
+* `small_parameter::Float64 = 1e-06`,
+* `geom_export_paths::Tuple{Vararg{String}} = ()`,
+* `extrusion_direction::String = "XY->Z"`,
+* `extr_dir_num_ele::Vector{Int64} = Int64[]`,
+* `extr_dir_cum_heights::Vector{Float64} = Float64[]`,
+* `extr_dir_recombine_ele::Bool = true`,
+* `mesh_periodicity::Bool = true`,
+* `element_types::Tuple{Vararg{Symbol}} = (:DEFAULT,)`,
+* `min_ele_size_factor::Float64 = 1.0`,
+* `max_ele_size_factor::Float64 = 2.0`,
+* `mesh_opt_algorithm::String = "Netgen"`,
+* `show_mesh_stats::Bool = true`,
+* `show_rve::Bool = true`,
 
 It is designed to return the following information
 
