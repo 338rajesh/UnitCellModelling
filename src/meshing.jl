@@ -170,27 +170,34 @@ function write_mesh_statistics(dim::Int64=-1)
     println(repeat("=", 50))
 end
 
+#  , , , mesh_min_size, mesh_max_size, mesh_opt_algorithm, show_mesh_stats
 
 function generate_mesh(
     uc::AbstractUnitCell,
-    options::Dict{Symbol, Any},
+    mesh_periodicity::Bool,
+    element_types::Tuple{Vararg{Symbol}},
+    extr_dir_num_ele::Vector{Int64},
+    min_ele_size::Float64,
+    max_ele_size::Float64,
+    mesh_opt_algorithm::String,
+    show_mesh_stats::Bool,
 )
     #
-    if options[:mesh_periodicity]
+    if mesh_periodicity
         apply_mesh_periodicity_constraints(uc)
     end
     #
     element_types = begin
-        if (options[:element_types][1:end] == (:DEFAULT, ) )
+        if (element_types[1:end] == (:DEFAULT, ) )
             if isa(uc, UDC2D)
                 (CPS3,)
             elseif isa(uc, UDC3D)
-                isempty(options[:num_ele_in_extr_dir]) ? (C3D4,) : (C3D6, C3D8,)
+                isempty(extr_dir_num_ele) ? (C3D4,) : (C3D6, C3D8,)
             elseif isa(uc, PRC)
                 (C3D4,)
             end            
         else
-            options[:element_types]
+            element_types
         end    
     end
     # 
@@ -204,19 +211,86 @@ function generate_mesh(
         gmsh.option.set_number("Mesh.RecombinationAlgorithm", 3)
     end
     #
-    gmsh.option.set_number("Mesh.MeshSizeMin", options[:mesh_min_size])
-    gmsh.option.set_number("Mesh.MeshSizeMax", options[:mesh_max_size])
+    gmsh.option.set_number("Mesh.MeshSizeMin", min_ele_size)
+    gmsh.option.set_number("Mesh.MeshSizeMax", max_ele_size)
     #
     gmsh.model.mesh.generate(dimension(uc))
-    gmsh.model.mesh.optimize(options[:mesh_opt_algorithm], true)
+    gmsh.model.mesh.optimize(mesh_opt_algorithm, true)
     gmsh.model.mesh.remove_duplicate_nodes()
     gmsh.model.mesh.renumber_nodes()
     #
     check_generated_ele_types(element_types, dimension(uc))
     #
-    if options[:show_mesh_stats]
+    if show_mesh_stats
         write_mesh_statistics()
     end
     #
+end
+
+
+"""
+    get_mesh_data()
+
+Returns a dictionary of mesh data with the following key-values pairs
+
+- `"all_node_tags"` => `Vector{Int}`
+- `"all_node_coordinates"` => `Matrix{Float64}`
+- `"matrix_element_connectivity"` => `Matrix{Int}`
+- `"inclusions_element_connectivity"` => `Matrix{Int}`
+- `"total_nodes"` => Int
+- `"num_2D_elements"` => Int
+- `"num_3D_elements"` => Int
+
+"""
+function get_mesh_data(
+    uc::AbstractUnitCell,
+    geometry_tags::Vector{Int},
+)::Dict{String, Any}
+    mesh_data = Dict{String, Any}()
+    uc_dim::Int = dimension(uc)
+    # -----------------------------------
+    #   Nodal data collection
+    # -----------------------------------
+    nt, nc, _ = gmsh.model.mesh.get_nodes()
+    mesh_data["all_node_tags"] = convert(Vector{Int64}, nt)  # Vector{Int64}
+    mesh_data["all_node_coordinates"] = reshape(nc, 3, :)  # Matrix{Float64}
+    #
+    # -----------------------------------
+    #   Collecting element connectivity
+    # -----------------------------------
+    element_connectivity::Dict{Int64, Matrix{Int64}} = Dict()
+    ele_tags::Vector{Vector{Int}} = Vector{Int}[]
+    ele_node_tags::Vector{Vector{Int}} = Vector{Int}[]
+    ele_types::Vector{Int} = Int[]
+    elt_num_nodes::Int = 0
+
+    function _element_connectivity(gtags::Vector{Int64})
+        element_connectivity = Dict{Int64, Matrix{Int64}}()
+        for ag_tag in gtags
+            ele_types, ele_tags, ele_node_tags = gmsh.model.mesh.get_elements(uc_dim, ag_tag)
+            #
+            for (etk, ael_type) in enumerate(ele_types)
+                _, _, _, elt_num_nodes, _, _ = gmsh.model.mesh.get_element_properties(ael_type)
+                elt_ele_connectivity = [
+                    reshape(ele_tags[etk], 1, :);
+                    reshape(ele_node_tags[etk], elt_num_nodes, :)
+                ]
+                # if element type (ael_type,) connectivity data is exisiting then append new data.
+                if ael_type in keys(element_connectivity)
+                    elt_ele_connectivity = hcat(element_connectivity[ael_type], elt_ele_connectivity)
+                end
+                #
+                element_connectivity[ael_type] = elt_ele_connectivity                
+            end    
+        end
+        return element_connectivity
+    end
+    mesh_data["matrix_element_connectivity"] = _element_connectivity(geometry_tags[1:1])
+    mesh_data["inclusions_element_connectivity"] = _element_connectivity(geometry_tags[2:end])
+    #
+    # Adding mesh Statistics like number of nodes, elements....etc.
+    merge!(mesh_data, get_mesh_statistics())
+    #
+    return mesh_data
 end
 
