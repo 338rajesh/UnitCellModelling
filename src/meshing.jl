@@ -243,11 +243,10 @@ Returns a dictionary of mesh data with the following key-values pairs
 
 """
 function get_mesh_data(
-    uc::AbstractUnitCell,
+    geom_dim::Int,
     geometry_tags::Vector{Int},
 )::Dict{String, Any}
     mesh_data = Dict{String, Any}()
-    uc_dim::Int = dimension(uc)
     # -----------------------------------
     #   Nodal data collection
     # -----------------------------------
@@ -264,10 +263,10 @@ function get_mesh_data(
     ele_types::Vector{Int} = Int[]
     elt_num_nodes::Int = 0
 
-    function _element_connectivity(gtags::Vector{Int64})
+    function _element_connectivity(gtags::Vector{Int64})::Dict{Int64, Matrix{Int64}}
         element_connectivity = Dict{Int64, Matrix{Int64}}()
         for ag_tag in gtags
-            ele_types, ele_tags, ele_node_tags = gmsh.model.mesh.get_elements(uc_dim, ag_tag)
+            ele_types, ele_tags, ele_node_tags = gmsh.model.mesh.get_elements(geom_dim, ag_tag)
             #
             for (etk, ael_type) in enumerate(ele_types)
                 _, _, _, elt_num_nodes, _, _ = gmsh.model.mesh.get_element_properties(ael_type)

@@ -11,11 +11,17 @@ include("geometric_modelling.jl")
 include("meshing.jl")
 
 """
-    modelling() -> Dict
+    make_unit_cell_model() -> Dict
+
+
+It performs mainly three tasks
+ 1. Geometry creation
+ 2. Mesh generation
+ 3. Exporting geometry and mesh data
 
 Returns a julia dictionary with the following key-value pairs
 
-- `"mesh_data"` => `Dict{String, Any}` , where possible key-value pairs of mesh data are
+- `"mesh_data"` => `Dict{String, Any}` , where possible key-value pairs of dictionary are
     - `"all_node_tags"` => `Vector{Int}`
     - `"all_node_coordinates"` => `Matrix{Float64}`
     - `"matrix_element_connectivity"` => `Matrix{Int}`
@@ -26,7 +32,7 @@ Returns a julia dictionary with the following key-value pairs
 
 
 """
-function create(
+function make_unit_cell_model(
     unit_cell::AbstractUnitCell;
     small_parameter::Float64 = 1e-06,
     geom_export_paths::Tuple{Vararg{String}} = (),  # joinpath(homedir(), "unit_cell.step"),
@@ -42,7 +48,7 @@ function create(
     show_mesh_stats::Bool = true,
     show_rve::Bool = true,
 )::Dict{String,Any}
-    unit_cell_dim = dimension(unit_cell)
+    unit_cell_dim::Int = dimension(unit_cell)
     small_uc_side_length = minimum(side_lengths(unit_cell))
     global ϵ = small_parameter
 
@@ -96,7 +102,8 @@ function create(
 
     # 
     model_data::Dict{String,Any} = Dict{String,Any}()
-    model_data["mesh_data"] = get_mesh_data(unit_cell, ucp_geom_tags)  # Dict{String, Any}
+    model_data["mesh_data"] = get_mesh_data(unit_cell_dim, ucp_geom_tags)  # Dict{String, Any}
+    #
     if show_rve
         gmsh.fltk.run()
     end
@@ -105,5 +112,7 @@ function create(
     #
     return model_data
 end  # of function
+
+export make_unit_cell_model
 
 end  # of UnitCellModelling module
