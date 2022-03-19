@@ -9,6 +9,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 gmsh = "93d0bc29-614b-4a6d-9b70-ef8786ec1f3c"
 
 [compat]
+StaticArrays = "1"
 Parameters = "0.12"
 julia = "1.6"
 
