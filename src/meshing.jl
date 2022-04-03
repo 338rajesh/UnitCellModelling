@@ -144,7 +144,7 @@ function write_mesh_statistics(dim::Int64=-1)
     mesh_stats = get_mesh_statistics(dim)
     #
     println(repeat("=", 50))
-    println("\t Mesh Statistics")
+    printstyled("MESH STATISTICS\n"; color=:yellow, bold=true)
     println(repeat("=", 50))
     #
     println("--- NODES ---")
@@ -180,7 +180,6 @@ function generate_mesh(
     min_ele_size::Float64,
     max_ele_size::Float64,
     mesh_opt_algorithm::String,
-    show_mesh_stats::Bool,
 )
     #
     if mesh_periodicity
@@ -220,10 +219,6 @@ function generate_mesh(
     gmsh.model.mesh.renumber_nodes()
     #
     check_generated_ele_types(element_types, dimension(uc))
-    #
-    if show_mesh_stats
-        write_mesh_statistics()
-    end
     #
 end
 

@@ -1,4 +1,4 @@
-udc_inclusions_library = Set(("CIRCLE", "CAPSULE", "RECTANGLE", "ELLIPSE",))
+udc_inclusions_library = Set(("CIRCLE", "CAPSULE", "RECTANGLE", "ELLIPSE", "REGULARPOLYGON", "CSHAPE", "NLOBESHAPE"))
 prc_inclusions_library = Set(("SPHERE", "SPHERO_CYLINDER", "BOX", "ELLIPSOID", "SPHEROID", "OBLATE_SPHEROID", "PROLATE_SPHEROID"))
 
 
@@ -29,8 +29,11 @@ end
      z_max < z_min is found, please ensure z_max > z_min."
 end
 
+
 buffer_bbox(bb::BBox2D, buffer::Float64) = bb .+ (buffer .* (-1.0, -1.0, 1.0, 1.0))
+area(bbox::BBox2D) = (bbox.xub - bbox.xlb) * (bbox.yub - bbox.ylb)
 buffer_bbox(bb::BBox3D, buffer::Float64) = bb .+ (buffer .* (-1.0, -1.0, -1.0, 1.0, 1.0, 1.0))
+volume(bbox::BBox3D) = (bbox.xub - bbox.xlb) * (bbox.yub - bbox.ylb) * (bbox.zub - bbox.zlb)
 
 side_lengths(bbx::BBox2D) = (bbx.xub - bbx.xlb, bbx.yub - bbx.ylb)
 side_lengths(bbx::BBox3D) = (bbx.xub - bbx.xlb, bbx.yub - bbx.ylb, bbx.zub - bbx.zlb)
