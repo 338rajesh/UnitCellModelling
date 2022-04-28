@@ -3,12 +3,13 @@ module UnitCellModelling
 using gmsh
 using Parameters
 using StaticArrays
-# using 
 
 include("ucmBase.jl")
 include("gshapes.jl")
 include("geometric_modelling.jl")
 include("meshing.jl")
+
+include("visualization.jl")
 
 """
     make_unit_cell_model() -> Dict
@@ -117,5 +118,6 @@ function make_unit_cell_model(
 end  # of function
 
 export make_unit_cell_model
+export plot_a_field
 
 end  # of UnitCellModelling module
