@@ -9,7 +9,7 @@ function make_rpolygon(
     side_len::Float64,
     rf::Float64,
     num_sides::Real;
-    normal_vec::NTuple{3,Float64} = (0.0, 0.0, 1.0)
+    normal_vec::NTuple{3,Float64}=(0.0, 0.0, 1.0)
 )::Int
     num_sides = convert(Int64, num_sides)
     xc, yc, zc = xyz_centre
@@ -103,6 +103,71 @@ function make_rectangle(
 end
 
 
+function make_cshape(
+    xyz_centre::NTuple{3,Float64},
+    θ::Float64,
+    ro::Float64,  # outer radius
+    ri::Float64,  # inner radius
+    α::Float64,  # included angle  # FIXME check for alpha greater than π
+)::Int
+    xc, yc, zc = xyz_centre
+    rm::Float64 = 0.5 * (ro + ri)
+    r_end::Float64 = 0.5 * (ro - ri)
+    #
+    cshape_centre = gmsh.model.occ.add_point(xc, yc, zc)
+    outer_start_point = gmsh.model.occ.add_point(xc + (ro * cos(θ)), yc + (ro * sin(θ)), zc)
+    outer_end_point = gmsh.model.occ.add_point(xc + (ro * cos(α + θ)), yc + (ro * sin(α + θ)), zc)
+    inner_start_point = gmsh.model.occ.add_point(xc + (ri * cos(θ)), yc + (ri * sin(θ)), zc)
+    inner_end_point = gmsh.model.occ.add_point(xc + (ri * cos(α + θ)), yc + (ri * sin(α + θ)), zc)
+    #
+    arc1 = gmsh.model.occ.add_circle(xc + (rm * cos(θ)), yc + (rm * sin(θ)), zc, r_end, -1, π + θ, (2.0 * π) + θ)
+    arc_outer = gmsh.model.occ.add_circle_arc(outer_start_point, cshape_centre, outer_end_point)
+    arc2 = gmsh.model.occ.add_circle(xc + (rm * cos(θ + α)), yc + (rm * sin(θ + α)), zc, r_end, -1, α + θ, π + α + θ)
+    arc_inner = gmsh.model.occ.add_circle_arc(inner_end_point, cshape_centre, inner_start_point)
+    #
+    cshape_wire_tag = gmsh.model.occ.add_curve_loop([arc1, arc_outer, arc2, arc_inner,])
+    cshape_disc_tag = gmsh.model.occ.add_plane_surface([cshape_wire_tag,])
+    return cshape_disc_tag
+end
+
+
+function make_nlobeshape(
+    xyz_centre::NTuple{3,Float64},
+    theta::Float64,  # inclination of a reference tip
+    ro::Float64,  # outer radius
+    rl::Float64,  # lobe radius
+    num_lobes::Real;
+    normal_vec::NTuple{3,Float64}=(0.0, 0.0, 1.0)
+)#::Int
+    num_lobes = convert(Int64, num_lobes)
+    xc, yc, zc = xyz_centre
+    ax, ay, az = normal_vec
+    α::Float64 = π / num_lobes
+    β::Float64 = asin(0.5 * (ro - rl) * sin(α) / rl)
+    b::Float64 = 2.0 * rl * sin(α + β) / sin(α)
+    #
+    circular_arcs_tags::Vector{Int} = Int[]
+    for i in 1:num_lobes
+        θ_i = theta + 2.0 * α * (i - 1)
+        θ_ip1 = theta + ((2.0 * i) - 1) * α
+        push!(
+            circular_arcs_tags,
+            gmsh.model.occ.add_circle(
+                xc + ((ro - rl) * cos(θ_i)), yc + ((ro - rl) * sin(θ_i)), zc,
+                rl, -1, θ_i - α - β, θ_i + α + β
+            ),
+            gmsh.model.occ.add_circle(
+                xc + (b * cos(θ_ip1)), yc + (b * sin(θ_ip1)), zc,
+                rl, -1, π + θ_ip1 - β, π + θ_ip1 + β,
+            )
+        )
+    end
+    nLobeShape_wire_tag = gmsh.model.occ.add_curve_loop(circular_arcs_tags)
+    nLobeShape_disc_tag = gmsh.model.occ.add_plane_surface([nLobeShape_wire_tag,])
+    return nLobeShape_disc_tag
+end
+
+
 # ==========================================
 #          CLUSTERS OF REGULAR 2D SHAPES
 # ==========================================
@@ -150,6 +215,24 @@ function add_rpolygons(
 end
 
 
+function add_cshapes(
+    xyt_ro_ri_alpha::Matrix{Float64},
+    z_min::Float64,
+)::Vector{Int}
+    @assert size(xyt_ro_ri_alpha, 2) == 6 "For C-shaped fibre, data matrix should contain six columns with xy coordinates of its centre, theta, outer radius, inner radius and included angle respectively"
+    return [make_cshape((ax, ay, z_min), ath, aro, ari, a_alpha) for (ax, ay, ath, aro, ari, a_alpha) in eachrow(xyt_ro_ri_alpha)]
+end
+
+
+function add_nlobeshapes(
+    xyt_ro_rl_n::Matrix{Float64},
+    z_min::Float64,
+)::Vector{Int}
+    @assert size(xyt_ro_rl_n, 2) == 6 "For n-Lobe shaped fibre, data matrix should contain six columns with xy coordinates of its centre, theta, outer radius, lobe radius and number of lobes respectively"
+    return [make_nlobeshape((ax, ay, z_min), ath, aro, arl, an) for (ax, ay, ath, aro, arl, an) in eachrow(xyt_ro_rl_n)]
+end
+
+
 # ==========================================
 #          REGULAR 3D SHAPES
 # ==========================================
@@ -162,8 +245,8 @@ function make_ellipsoid(
 )::Int
     dim_tag = (3, gmsh.model.occ.add_sphere(x, y, z, 1.0))
     gmsh.model.occ.dilate(dim_tag, x, y, z, a, b, c)  #CHECK_IT major axis or semi-major axis lengths
-    gmsh.model.occ.rotate(dim_tag, x, y, z, 0.0, 0.0, 1.0, azm)  
-    gmsh.model.occ.rotate(dim_tag, x, y, z, sin(azm), -cos(azm), 0.0, (π*0.5) - plr)  # CHECK_IT if the orientations are as expected?
+    gmsh.model.occ.rotate(dim_tag, x, y, z, 0.0, 0.0, 1.0, azm)
+    gmsh.model.occ.rotate(dim_tag, x, y, z, sin(azm), -cos(azm), 0.0, (π * 0.5) - plr)  # CHECK_IT if the orientations are as expected?
     return dim_tag[2]
 end
 

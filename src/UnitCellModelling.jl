@@ -3,12 +3,13 @@ module UnitCellModelling
 using gmsh
 using Parameters
 using StaticArrays
-# using 
 
 include("ucmBase.jl")
 include("gshapes.jl")
 include("geometric_modelling.jl")
 include("meshing.jl")
+
+include("visualization.jl")
 
 """
     make_unit_cell_model() -> Dict
@@ -47,6 +48,7 @@ function make_unit_cell_model(
     mesh_opt_algorithm::String = "Netgen",
     show_mesh_stats::Bool = true,
     show_rve::Bool = true,
+    verbose::Int=1,
 )::Dict{String,Any}
     unit_cell_dim::Int = dimension(unit_cell)
     small_uc_side_length = minimum(side_lengths(unit_cell))
@@ -86,8 +88,10 @@ function make_unit_cell_model(
         min_ele_size_factor*small_uc_side_length,
         max_ele_size_factor*small_uc_side_length,
         mesh_opt_algorithm,
-        show_mesh_stats
     )
+    if show_mesh_stats && (verbose > 0)
+        write_mesh_statistics()
+    end
     #
     # ---------------------
     #       EXPort
@@ -114,5 +118,6 @@ function make_unit_cell_model(
 end  # of function
 
 export make_unit_cell_model
+export plot_a_field
 
 end  # of UnitCellModelling module

@@ -16,10 +16,11 @@ julia> ]add https://github.com/338rajesh/UnitCellModelling.jl
 
 ## Usage
 
-This module exports the following single function.
+This module exports the following functions.
 
 ```julia
 make_unit_cell_model(unit_cell; <kwargs>)
+plot_nodal_fields(uc_odb, load_case_IDs, nodal_fvariables; <kwargs>)
 ```
 
 - `unit_cell::AbstractUnitCell`

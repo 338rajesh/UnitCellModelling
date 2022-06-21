@@ -32,8 +32,12 @@ function add_inclusions(
                     add_capsular_discs(incl_data, z_min)
                 elseif uppercase(incl_shape_id) == "RECTANGLE"
                     add_rectangular_discs(incl_data, z_min)
-                elseif uppercase(incl_shape_id) == "RPOLYGON"
+                elseif uppercase(incl_shape_id) == "REGULARPOLYGON"
                     add_rpolygons(incl_data, z_min)
+                elseif uppercase(incl_shape_id) == "NLOBESHAPE"
+                    add_nlobeshapes(incl_data, z_min)
+                elseif uppercase(incl_shape_id) == "CSHAPE"
+                    add_cshapes(incl_data, z_min)
                 end
             end
         ]
