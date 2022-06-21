@@ -18,10 +18,10 @@ function apply_mesh_periodicity_constraints(
     for a_parent in parents
         #
         affine_matrix = [
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
         ]
         #
         if a_parent == :XLB
@@ -39,27 +39,27 @@ function apply_mesh_periodicity_constraints(
             pxl, pyl, pzl, pxu, pyu, pzu = buffer_bbox(uc, a_parent)
         end
         #
-        parent_entities = gmsh.model.get_entities_in_bounding_box(pxl, pyl, pzl, pxu, pyu, pzu, dim-1)
+        parent_entities = gmsh.model.get_entities_in_bounding_box(pxl, pyl, pzl, pxu, pyu, pzu, dim - 1)
         for (ap_dim, ap_tag) in parent_entities
             apxl, apyl, apzl, apxu, apyu, apzu = gmsh.model.get_bounding_box(ap_dim, ap_tag)
-            apxl += (affine_matrix[4, ] - ϵ)
-            apyl += (affine_matrix[8, ] - ϵ)
+            apxl += (affine_matrix[4,] - ϵ)
+            apyl += (affine_matrix[8,] - ϵ)
             apzl += (affine_matrix[12,] - ϵ)
-            apxu += (affine_matrix[4, ] + ϵ)
-            apyu += (affine_matrix[8, ] + ϵ)
+            apxu += (affine_matrix[4,] + ϵ)
+            apyu += (affine_matrix[8,] + ϵ)
             apzu += (affine_matrix[12,] + ϵ)
             chidren_entities = gmsh.model.get_entities_in_bounding_box(
-                apxl, apyl, apzl, apxu, apyu, apzu, dim-1
+                apxl, apyl, apzl, apxu, apyu, apzu, dim - 1
             )
             for (ac_dim, ac_tag) in chidren_entities
                 (acxl, acyl, aczl, acxu, acyu, aczu) = gmsh.model.get_bounding_box(ac_dim, ac_tag)
                 if (
-                    abs(acxl-apxl) < ϵ &&
-                    abs(acyl-apyl) < ϵ &&
-                    abs(aczl-apzl) < ϵ &&
-                    abs(acxu-apxu) < ϵ &&
-                    abs(acyu-apyu) < ϵ &&
-                    abs(aczu-apzu) < ϵ
+                    abs(acxl - apxl) < ϵ &&
+                    abs(acyl - apyl) < ϵ &&
+                    abs(aczl - apzl) < ϵ &&
+                    abs(acxu - apxu) < ϵ &&
+                    abs(acyu - apyu) < ϵ &&
+                    abs(aczu - apzu) < ϵ
                 )
                     gmsh.model.mesh.set_periodic(dim, [ac_tag,], [ap_tag,], affine_matrix)
                 end
@@ -73,14 +73,14 @@ function check_generated_ele_types(
     ele_types::Tuple,
     dim::Int64
 )
-    num_tet     = convert(Int64, gmsh.option.get_number("Mesh.NbTetrahedra"))  # C3D4
-    num_hex     = convert(Int64, gmsh.option.get_number("Mesh.NbHexahedra"))  # C3D8
-    num_prism   = convert(Int64, gmsh.option.get_number("Mesh.NbPrisms"))  # C3D6
-    num_pyramids= convert(Int64, gmsh.option.get_number("Mesh.NbPyramids"))  #C3D5
-    num_trihedra= convert(Int64, gmsh.option.get_number("Mesh.NbTrihedra")) 
-    num_tri  = convert(Int64, gmsh.option.get_number("Mesh.NbTriangles"))  # CPS3 || CPE3
+    num_tet = convert(Int64, gmsh.option.get_number("Mesh.NbTetrahedra"))  # C3D4
+    num_hex = convert(Int64, gmsh.option.get_number("Mesh.NbHexahedra"))  # C3D8
+    num_prism = convert(Int64, gmsh.option.get_number("Mesh.NbPrisms"))  # C3D6
+    num_pyramids = convert(Int64, gmsh.option.get_number("Mesh.NbPyramids"))  #C3D5
+    num_trihedra = convert(Int64, gmsh.option.get_number("Mesh.NbTrihedra"))
+    num_tri = convert(Int64, gmsh.option.get_number("Mesh.NbTriangles"))  # CPS3 || CPE3
     num_quad = convert(Int64, gmsh.option.get_number("Mesh.NbQuadrangles"))  # CPS4 || CPE4
-    if dim==3
+    if dim == 3
         if !(:C3D4 in ele_types) && (num_tet > 0)
             @warn "C3D4 / Tet elements are generated which are not requested...!"
         end
@@ -89,11 +89,11 @@ function check_generated_ele_types(
         end
         if !(:C3D8 in ele_types) && (num_hex > 0)
             @warn "C3D8 / Brick elements are generated which are not requested...!"
-        end    
-        if num_pyramids >0
+        end
+        if num_pyramids > 0
             @warn "Pyramidal elements are generated which are not requested...!"
         end
-        if num_trihedra >0
+        if num_trihedra > 0
             @warn "Trihedra elements are generated which are not requested...!"
         end
     else
@@ -107,16 +107,16 @@ function check_generated_ele_types(
 end
 
 
-function get_mesh_statistics(dim::Int64=-1)::Dict{String, Int64}
-    mesh_stats = Dict{String, Int64}()
-    if (dim == -1 ) || (dim == 3)
-        mesh_stats["num_tet"]     = convert(Int64, gmsh.option.get_number("Mesh.NbTetrahedra"))
-        mesh_stats["num_hex"]     = convert(Int64, gmsh.option.get_number("Mesh.NbHexahedra"))
-        mesh_stats["num_prism"]   = convert(Int64, gmsh.option.get_number("Mesh.NbPrisms"))
-        mesh_stats["num_pyramids"]= convert(Int64, gmsh.option.get_number("Mesh.NbPyramids"))
-        mesh_stats["num_trihedra"]= convert(Int64, gmsh.option.get_number("Mesh.NbTrihedra"))    
+function get_mesh_statistics(dim::Int64=-1)::Dict{String,Int64}
+    mesh_stats = Dict{String,Int64}()
+    if (dim == -1) || (dim == 3)
+        mesh_stats["num_tet"] = convert(Int64, gmsh.option.get_number("Mesh.NbTetrahedra"))
+        mesh_stats["num_hex"] = convert(Int64, gmsh.option.get_number("Mesh.NbHexahedra"))
+        mesh_stats["num_prism"] = convert(Int64, gmsh.option.get_number("Mesh.NbPrisms"))
+        mesh_stats["num_pyramids"] = convert(Int64, gmsh.option.get_number("Mesh.NbPyramids"))
+        mesh_stats["num_trihedra"] = convert(Int64, gmsh.option.get_number("Mesh.NbTrihedra"))
     end
-    if (dim == -1 ) || (dim == 2)
+    if (dim == -1) || (dim == 2)
         mesh_stats["num_tri"] = convert(Int64, gmsh.option.get_number("Mesh.NbTriangles"))
         mesh_stats["num_quad"] = convert(Int64, gmsh.option.get_number("Mesh.NbQuadrangles"))
     end
@@ -187,24 +187,24 @@ function generate_mesh(
     end
     #
     element_types = begin
-        if (element_types[1:end] == (:DEFAULT, ) )
+        if (element_types[1:end] == (:DEFAULT,))
             if isa(uc, UDC2D)
                 (CPS3,)
             elseif isa(uc, UDC3D)
                 isempty(extr_dir_num_ele) ? (C3D4,) : (C3D6, C3D8,)
             elseif isa(uc, PRC)
                 (C3D4,)
-            end            
+            end
         else
             element_types
-        end    
+        end
     end
     # 
     # Setting constraints to get the mesh of desired element types
     if any([i in (:CPS4, :CPE4, :C3D8) for i in element_types])
         gmsh.option.set_number("Mesh.RecombineAll", 1)
     end
-    if (length(element_types)==1 && (element_types[1] == :CPE4 || element_types[1] == :CPS4 || element_types[1] == :C3D8))
+    if (length(element_types) == 1 && (element_types[1] == :CPE4 || element_types[1] == :CPS4 || element_types[1] == :C3D8))
         # Purely quad elements in the mesh
         gmsh.option.set_number("Mesh.Algorithm", 8)
         gmsh.option.set_number("Mesh.RecombinationAlgorithm", 3)
@@ -240,8 +240,10 @@ Returns a dictionary of mesh data with the following key-values pairs
 function get_mesh_data(
     geom_dim::Int,
     geometry_tags::Vector{Int},
-)::Dict{String, Any}
-    mesh_data = Dict{String, Any}()
+    node_renum_algo::String="",
+    verbose::Int=0,
+)::Dict{String,Any}
+    mesh_data = Dict{String,Any}()
     # -----------------------------------
     #   Nodal data collection
     # -----------------------------------
@@ -252,21 +254,21 @@ function get_mesh_data(
     # -----------------------------------
     #   Collecting element connectivity
     # -----------------------------------
-    element_connectivity::Dict{Int64, Matrix{Int64}} = Dict()
+    element_connectivity::Dict{Int64,Matrix{Int64}} = Dict()
     ele_tags::Vector{Vector{Int}} = Vector{Int}[]
     ele_node_tags::Vector{Vector{Int}} = Vector{Int}[]
     ele_types::Vector{Int} = Int[]
     elt_num_nodes::Int = 0
 
-    function _element_connectivity(gtags::Vector{Int64})::Dict{Int64, Matrix{Int64}}
-        element_connectivity = Dict{Int64, Matrix{Int64}}()
+    function _element_connectivity(gtags::Vector{Int64})::Dict{Int64,Matrix{Int64}}
+        element_connectivity = Dict{Int64,Matrix{Int64}}()
         for ag_tag in gtags
             ele_types, ele_tags, ele_node_tags = gmsh.model.mesh.get_elements(geom_dim, ag_tag)
             #
             for (etk, ael_type) in enumerate(ele_types)
                 _, _, _, elt_num_nodes, _, _ = gmsh.model.mesh.get_element_properties(ael_type)
                 elt_ele_connectivity = [
-                    reshape(ele_tags[etk], 1, :);
+                    reshape(ele_tags[etk], 1, :)
                     reshape(ele_node_tags[etk], elt_num_nodes, :)
                 ]
                 # if element type (ael_type,) connectivity data is exisiting then append new data.
@@ -274,13 +276,46 @@ function get_mesh_data(
                     elt_ele_connectivity = hcat(element_connectivity[ael_type], elt_ele_connectivity)
                 end
                 #
-                element_connectivity[ael_type] = elt_ele_connectivity                
-            end    
+                element_connectivity[ael_type] = elt_ele_connectivity
+            end
         end
         return element_connectivity
     end
     mesh_data["matrix_element_connectivity"] = _element_connectivity(geometry_tags[1:1])
     mesh_data["inclusions_element_connectivity"] = _element_connectivity(geometry_tags[2:end])
+    #
+    # 
+    if !isempty(node_renum_algo)
+        all_ele_conn = merge_ele_conn([
+            mesh_data["matrix_element_connectivity"],
+            mesh_data["inclusions_element_connectivity"],
+        ])
+        if uppercase(node_renum_algo) == "RCM"
+            if verbose > 0
+                println("Initial bandwidth: ", bandwidth(all_ele_conn, dof=1, half_bw=false))
+                println("Renumbering the nodes using reverse Cuthill McKee algorithm...!")
+            end
+            new_nt_order = get_rcm_node_labels(all_ele_conn)
+            mesh_data["matrix_element_connectivity"] = update_element_connectivity(
+                mesh_data["matrix_element_connectivity"], new_nt_order
+            )
+            mesh_data["inclusions_element_connectivity"] = update_element_connectivity(
+                mesh_data["inclusions_element_connectivity"], new_nt_order
+            )
+            mesh_data["all_node_tags"] = [
+                findfirst(isequal(ant), new_nt_order) for ant in mesh_data["all_node_tags"]
+                ]
+            if verbose > 0
+                new_bw = bandwidth(merge_ele_conn([mesh_data["matrix_element_connectivity"],
+                        mesh_data["inclusions_element_connectivity"],]), dof=1, half_bw=false)
+                println("New bandwidth:", new_bw)
+            end
+
+        else
+            @warn "Unable to recognize specified renumbering algorithm $node_renum_algo
+            so, skipping the node renumbering...!"
+        end
+    end
     #
     # Adding mesh Statistics like number of nodes, elements....etc.
     merge!(mesh_data, get_mesh_statistics())

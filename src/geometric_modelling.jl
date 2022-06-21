@@ -104,62 +104,75 @@ function make_udc_transverse_section(
     #           creating raw 2D parts
     # ===========================================
     raw_matrix_tag = add_bbox(uc)
-    raw_inclusions_tags = add_inclusions(uc)
-    gmsh.model.occ.synchronize()
-    # ===========================================
-    #           BOOLEAN OPERATIONS
-    # ===========================================
-    fragments, _ = gmsh.model.occ.fragment(
-        (2, raw_matrix_tag),
-        [(2, i) for i in raw_inclusions_tags]
-    )
-    gmsh.model.occ.synchronize() 
+    if length(uc.inclusions)>0
+        raw_inclusions_tags = add_inclusions(uc)
+        gmsh.model.occ.synchronize()
+        # ===========================================
+        #           BOOLEAN OPERATIONS
+        # ===========================================
+        fragments, _ = gmsh.model.occ.fragment(
+            (2, raw_matrix_tag),
+            [(2, i) for i in raw_inclusions_tags]
+        )
+        gmsh.model.occ.synchronize() 
+        
+        # gmsh.fltk.run()
+        
+        if isa(uc, UDC2D)
+            xlb_buff, ylb_buff, xub_buff, yub_buff = buffer_bbox(uc, :ALL, ϵ)
+            zlb_buff, zub_buff = -ϵ, ϵ
+        else
+            xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff = buffer_bbox(uc, :ALL, ϵ)
+        end
+
+        # Checking and removing, if there are any surfaces outside unit cell.
+        surfaces_in_uc_bounds = gmsh.model.get_entities_in_bounding_box(
+            xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff, 2
+        )
+        outer_surface_fragments = [i for i in fragments if !(i in surfaces_in_uc_bounds)]
+
+        # gmsh.fltk.run()
+
+        gmsh.model.occ.remove(outer_surface_fragments, true)
+        gmsh.model.occ.synchronize()
+        
+        # gmsh.fltk.run()
+
+        # Checking and removing, if there are any curves outside unit cell.
+        all_curves = gmsh.model.get_entities(1)
+        curves_within_uc_bounds = gmsh.model.get_entities_in_bounding_box(
+            xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff, 1
+        )
+        exterior_curves = [a_curve for a_curve in all_curves if !(a_curve in curves_within_uc_bounds)]
+        gmsh.model.occ.remove(exterior_curves, true)
+        gmsh.model.occ.synchronize()
     
-    if isa(uc, UDC2D)
-        xlb_buff, ylb_buff, xub_buff, yub_buff = buffer_bbox(uc, :ALL, ϵ)
-        zlb_buff, zub_buff = 0.0, 0.0
+        # Checking and removing, if there are any points outside unit cell.
+        all_points = gmsh.model.get_entities(0)
+        # points_within_uc_bounds = gmsh.model.get_entities_in_bounding_box(
+        #     xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff, 0
+        # )
+        # exterior_points = [a_pnt for a_pnt in all_points if !(a_pnt in points_within_uc_bounds)]
+    
+        # println("Number of exterior_points ", length(exterior_points))
+        gmsh.model.occ.remove(all_points)
+        gmsh.model.occ.synchronize()
+    
+        # ===========================================
+        #           FINDING THE MATRIX TAG
+        # ===========================================
+        #
+
+
+        matrix_tag = get_matrix_phase_tag(uc, 2)
+    
+        inclusion_tags = [i for (_, i) in surfaces_in_uc_bounds if i != matrix_tag]
+    
+        return [matrix_tag; inclusion_tags]
     else
-        xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff = buffer_bbox(uc, :ALL, ϵ)
+        gmsh.model.occ.synchronize()
+        return [raw_matrix_tag,]
     end
-
-    # Checking and removing, if there are any surfaces outside unit cell.
-    surfaces_in_uc_bounds = gmsh.model.get_entities_in_bounding_box(
-        xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff, 2
-    )
-    outer_surface_fragments = [i for i in fragments if !(i in surfaces_in_uc_bounds)]
-    gmsh.model.occ.remove(outer_surface_fragments, true)
-    gmsh.model.occ.synchronize()
-
-    # Checking and removing, if there are any curves outside unit cell.
-    all_curves = gmsh.model.get_entities(1)
-    curves_within_uc_bounds = gmsh.model.get_entities_in_bounding_box(
-        xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff, 1
-    )
-    exterior_curves = [a_curve for a_curve in all_curves if !(a_curve in curves_within_uc_bounds)]
-    gmsh.model.occ.remove(exterior_curves, true)
-    gmsh.model.occ.synchronize()
-
-    # Checking and removing, if there are any points outside unit cell.
-    all_points = gmsh.model.get_entities(0)
-    # points_within_uc_bounds = gmsh.model.get_entities_in_bounding_box(
-    #     xlb_buff, ylb_buff, zlb_buff, xub_buff, yub_buff, zub_buff, 0
-    # )
-    # exterior_points = [a_pnt for a_pnt in all_points if !(a_pnt in points_within_uc_bounds)]
-
-    # println("Number of exterior_points ", length(exterior_points))
-    gmsh.model.occ.remove(all_points)
-    gmsh.model.occ.synchronize()
-
-    # ===========================================
-    #           FINDING THE MATRIX TAG
-    # ===========================================
-    #
-
-    matrix_tag = get_matrix_phase_tag(uc, 2)
-
-    inclusion_tags = [i for (_, i) in surfaces_in_uc_bounds if i != matrix_tag]
-
-    return [matrix_tag; inclusion_tags]
 end
 
 
@@ -173,7 +186,7 @@ function geometric_model(
     uc_cross_section_surfaces = make_udc_transverse_section(uc)
     if isa(uc, UDC2D)
         return uc_cross_section_surfaces
-    else
+    elseif isa(uc, UDC3D)
         if extr_dir == "XY->Z"
             dx, dy, dz = 0.0, 0.0, uc.bbox.zub - uc.bbox.zlb
         elseif extr_dir == "ZX->Y"

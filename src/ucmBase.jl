@@ -64,6 +64,7 @@ end
 const UDC = Union{UDC2D, UDC3D}
 const UnitCell3D = Union{UDC3D, PRC}
 
+
 side_lengths(uc::AbstractUnitCell) = side_lengths(uc.bbox)
 
 dimension(uc::AbstractUnitCell) = begin
@@ -100,3 +101,60 @@ function buffer_bbox(
     end
 end
 
+
+function buffer_bbox(
+    uc::UDC2D,
+    identifier::Symbol=:ALL,
+    ϵ::Float64=1e-06, 
+)
+    ucbb = uc.bbox
+    aϵ = abs(ϵ)
+    if identifier == :ALL
+        return uc.bbox .+ [-ϵ, -ϵ, ϵ, ϵ]
+    elseif identifier == :XLB
+        return BBox2D(ucbb.xlb-aϵ, ucbb.ylb-ϵ, ucbb.xlb+aϵ, ucbb.yub+ϵ)
+    elseif identifier == :YLB
+        return BBox2D(ucbb.xlb-ϵ, ucbb.ylb-aϵ, ucbb.xub+ϵ, ucbb.ylb+aϵ)
+    elseif identifier == :XUB
+        return BBox2D(ucbb.xub-aϵ, ucbb.ylb-ϵ, ucbb.xub+aϵ, ucbb.yub+ϵ)
+    elseif identifier == :YUB
+        return BBox2D(ucbb.xlb-ϵ, ucbb.yub-aϵ, ucbb.xub+ϵ, ucbb.yub+aϵ)
+    else
+        @warn "Invalid identifier is found in buffer_bbox evaluation"
+    end
+end
+
+
+
+"""
+Returns SMatrix of adjacent local node labels for each local node of the
+given element type.
+
+Each column holds a local node neighbours in order
+
+"""
+function adjacent_local_node_indices(
+    el_type::Int
+)::SMatrix
+    if el_type == 1
+        return SMatrix{1,2,Int64}([2 1])
+    elseif el_type == 2
+        return SMatrix{2,3,Int64}([[2, 3] [3, 1] [1, 2]])
+    elseif el_type == 3
+        return SMatrix{2,4,Int64}([[2, 4] [3, 1] [4, 2] [1, 3]])
+    elseif el_type == 16
+        return SMatrix{2,8,Int64}(
+            [[5, 8] [5, 6] [6, 7] [7, 8] [1, 2] [2, 3] [3, 4] [4, 1]]
+        )
+    elseif el_type == 4
+        return SMatrix{3,4,Int64}([[2, 3, 4] [3, 1, 4] [1, 2, 4] [1, 2, 3]])
+    elseif el_type == 6
+        return SMatrix{3,6,Int64}(
+            [[2, 3, 4] [1, 3, 5] [1, 2, 6] [1, 5, 6] [2, 4, 6] [3, 4, 5]]
+        )
+    elseif el_type == 5
+        return SMatrix{3,8,Int64}(
+            [[2, 4, 5] [3, 1, 6] [7, 2, 4] [1, 8, 3] [1, 8, 6] [2, 5, 7] [3, 6, 8] [4, 5, 7]]
+        )
+    end
+end

@@ -68,6 +68,7 @@ plot_nodal_fields(uc_odb, load_case_IDs, nodal_fvariables; <kwargs>)
   - `max_ele_size_factor::Float64 = 2.0`,
   - `mesh_opt_algorithm::String = "Netgen"`,
   - `show_mesh_stats::Bool = true`,
+  - `node_renum_algorithm = "RCM"`,
   - `show_rve::Bool = true`,
 
 - Returns
