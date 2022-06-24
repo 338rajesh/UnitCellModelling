@@ -14,7 +14,6 @@ include("node_labelling.jl")
 
 include("visualization.jl")
 
-include("visualization.jl")
 
 """
     make_unit_cell_model() -> Dict
