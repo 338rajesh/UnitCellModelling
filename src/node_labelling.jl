@@ -298,10 +298,3 @@ function update_element_connectivity(
     return new_ele_connectivity
 end
 
-
-# function update_node_tags(
-#     old_ntags::Vector{Int},
-#     new_nt_order::Vector{Int}
-# )::Vector{Int}
-#     return [i for (i, j) in zip(old_ntags, )]
-# end

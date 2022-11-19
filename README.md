@@ -1,6 +1,6 @@
 # Unit Cell Modelling
 
-Geometric modelling of a unit cell and its meshing can be obtained using this package. which in turn uses an open source code, [`gmsh`](http://gmsh.info/) in the background. 
+Geometric modelling of a unit cell and its meshing can be obtained using this package. This task is accomplished using an open source code, [`gmsh`](http://gmsh.info/) in the background. 
 
 > **Note**: Here, unit cell implies any spatially repeating rectangular/cuboid domain. It may have inclusions of various shapes and their spatial arrangement may follow any distribution.
 
@@ -83,7 +83,17 @@ plot_nodal_fields(uc_odb, load_case_IDs, nodal_fvariables; <kwargs>)
     - `"total_nodes"` => Int
     - `"num_2D_elements"` => Int
     - `"num_3D_elements"` => Int
-  
+
+### Acceptable inclusion shapes
++ 2D shapes:
+   + `"CIRCLE"`
+   + `"CAPSULE"`
+   + `"RECTANGLE"`
+   + `"ELLIPSE"`
+   + `"REGULARPOLYGON"`
+   + `"CSHAPE"`
+   + `"NLOBESHAPE"`
+
 ---
 
 As of now, fibres with the following shapes can be modelled,

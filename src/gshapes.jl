@@ -105,27 +105,49 @@ end
 
 function make_cshape(
     xyz_centre::NTuple{3,Float64},
-    θ::Float64,
+    θ1::Float64,
     ro::Float64,  # outer radius
     ri::Float64,  # inner radius
-    α::Float64,  # included angle  # FIXME check for alpha greater than π
+    θc::Float64,  # included angle  # FIXME check for alpha greater than π
 )::Int
     xc, yc, zc = xyz_centre
-    rm::Float64 = 0.5 * (ro + ri)
-    r_end::Float64 = 0.5 * (ro - ri)
+    r_mean::Float64 = 0.5 * (ro + ri)
+    r_tip::Float64 = 0.5 * (ro - ri)
+    θ2::Float64 = θ1 + (0.5*θc)
+    θ3::Float64 = θ1 + (1.0*θc)
     #
-    cshape_centre = gmsh.model.occ.add_point(xc, yc, zc)
-    outer_start_point = gmsh.model.occ.add_point(xc + (ro * cos(θ)), yc + (ro * sin(θ)), zc)
-    outer_end_point = gmsh.model.occ.add_point(xc + (ro * cos(α + θ)), yc + (ro * sin(α + θ)), zc)
-    inner_start_point = gmsh.model.occ.add_point(xc + (ri * cos(θ)), yc + (ri * sin(θ)), zc)
-    inner_end_point = gmsh.model.occ.add_point(xc + (ri * cos(α + θ)), yc + (ri * sin(α + θ)), zc)
+    add_a_point(
+        x_::Float64, y_::Float64, z_::Float64, tht::Float64, r_::Float64
+    )::Int = gmsh.model.occ.add_point(x_ + (r_ * cos(tht)), y_ + (r_ * sin(tht)), z_)
+    
+    c0::Int = add_a_point(xc, yc, zc, 0.0, 0.0)
+    c4::Int = add_a_point(xc, yc, zc, θ3, r_mean)
+    c8::Int = add_a_point(xc, yc, zc, θ1, r_mean)
     #
-    arc1 = gmsh.model.occ.add_circle(xc + (rm * cos(θ)), yc + (rm * sin(θ)), zc, r_end, -1, π + θ, (2.0 * π) + θ)
-    arc_outer = gmsh.model.occ.add_circle_arc(outer_start_point, cshape_centre, outer_end_point)
-    arc2 = gmsh.model.occ.add_circle(xc + (rm * cos(θ + α)), yc + (rm * sin(θ + α)), zc, r_end, -1, α + θ, π + α + θ)
-    arc_inner = gmsh.model.occ.add_circle_arc(inner_end_point, cshape_centre, inner_start_point)
+    # Adding points
+    p_1::Int = add_a_point(xc, yc, zc, θ1, ro)
+    p_2::Int = add_a_point(xc, yc, zc, θ2, ro)
+    p_3::Int = add_a_point(xc, yc, zc, θ3, ro)
+    p_4::Int = add_a_point(xc+(r_mean*cos(θ3)), yc+(r_mean*sin(θ3)), zc, θ3+(0.5*π), r_tip)  # tip-1
+    p_5::Int = add_a_point(xc, yc, zc, θ3, ri)
+    p_6::Int = add_a_point(xc, yc, zc, θ2, ri)
+    p_7::Int = add_a_point(xc, yc, zc, θ1, ri)
+    p_8::Int = add_a_point(xc+(r_mean*cos(θ1)), yc+(r_mean*sin(θ1)), zc, θ1+(1.5*π), r_tip)  # tip-2
     #
-    cshape_wire_tag = gmsh.model.occ.add_curve_loop([arc1, arc_outer, arc2, arc_inner,])
+    gmsh.model.occ.synchronize()
+    # Adding circular arcs and making wire
+    cshape_wire_tag = gmsh.model.occ.add_curve_loop([
+        gmsh.model.occ.add_circle_arc(p_1, c0, p_2),
+        gmsh.model.occ.add_circle_arc(p_2, c0, p_3),
+        gmsh.model.occ.add_circle_arc(p_3, c4, p_4),
+        gmsh.model.occ.add_circle_arc(p_4, c4, p_5),
+        gmsh.model.occ.add_circle_arc(p_5, c0, p_6),
+        gmsh.model.occ.add_circle_arc(p_6, c0, p_7),
+        gmsh.model.occ.add_circle_arc(p_7, c8, p_8),
+        gmsh.model.occ.add_circle_arc(p_8, c8, p_1),
+    ])
+    #
+    # Making Surface
     cshape_disc_tag = gmsh.model.occ.add_plane_surface([cshape_wire_tag,])
     return cshape_disc_tag
 end
