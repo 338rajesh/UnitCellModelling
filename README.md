@@ -1,6 +1,6 @@
 # Unit Cell Modelling
 
-Geometric modelling of a unit cell and its meshing can be obtained using this package. This task is accomplished using an open source code, [`gmsh`](http://gmsh.info/) in the background. 
+Geometric modelling of a unit cell and its meshing can be obtained using this package. This task is accomplished using an open source code, [`gmsh`](http://gmsh.info/) in the background.
 
 > **Note**: Here, unit cell implies any spatially repeating rectangular/cuboid domain. It may have inclusions of various shapes and their spatial arrangement may follow any distribution.
 
@@ -68,7 +68,7 @@ plot_nodal_fields(uc_odb, load_case_IDs, nodal_fvariables; <kwargs>)
   - `max_ele_size_factor::Float64 = 2.0`,
   - `mesh_opt_algorithm::String = "Netgen"`,
   - `show_mesh_stats::Bool = true`,
-  - `node_renum_algorithm = "RCM"`,
+  - `node_renum_algorithm = "RCM"`, Empty string `""` avoids renumbering the nodes.
   - `show_rve::Bool = true`,
 
 - Returns
@@ -85,14 +85,15 @@ plot_nodal_fields(uc_odb, load_case_IDs, nodal_fvariables; <kwargs>)
     - `"num_3D_elements"` => Int
 
 ### Acceptable inclusion shapes
-+ 2D shapes:
-   + `"CIRCLE"`
-   + `"CAPSULE"`
-   + `"RECTANGLE"`
-   + `"ELLIPSE"`
-   + `"REGULARPOLYGON"`
-   + `"CSHAPE"`
-   + `"NLOBESHAPE"`
+
+- 2D shapes:
+  - `"CIRCLE"`
+  - `"CAPSULE"`
+  - `"RECTANGLE"`
+  - `"ELLIPSE"`
+  - `"REGULARPOLYGON"`
+  - `"CSHAPE"`
+  - `"NLOBESHAPE"`
 
 ---
 

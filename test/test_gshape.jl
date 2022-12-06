@@ -10,7 +10,7 @@ test_nlobe_shape = true
 if test_nlobe_shape
     UnitCellModelling.make_nlobeshape(
         (0.0, 0.0, 0.0),
-        π * 0.0, 20.0, 10.0, 3,
+        π * 0.25, 20.0, 12.0, 2,
     )
 elseif test_cshape
     UnitCellModelling.make_cshape(

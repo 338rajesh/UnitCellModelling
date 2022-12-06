@@ -105,7 +105,7 @@ end
 
 function make_cshape(
     xyz_centre::NTuple{3,Float64},
-    θ1::Float64,
+    θ1::Float64,  # Orientation of starting tip.
     ro::Float64,  # outer radius
     ri::Float64,  # inner radius
     θc::Float64,  # included angle  # FIXME check for alpha greater than π
@@ -154,38 +154,58 @@ end
 
 
 function make_nlobeshape(
-    xyz_centre::NTuple{3,Float64},
-    theta::Float64,  # inclination of a reference tip
+    xyz_centre::NTuple{3,Float64},  # centre of the n-lobe
+    theta::Float64,  # Orientation of the initial/reference tip
     ro::Float64,  # outer radius
     rl::Float64,  # lobe radius
-    num_lobes::Real;
-    normal_vec::NTuple{3,Float64}=(0.0, 0.0, 1.0)
-)#::Int
-    num_lobes = convert(Int64, num_lobes)
-    xc, yc, zc = xyz_centre
-    ax, ay, az = normal_vec
+    num_lobes::Int;
+    normal_vec::NTuple{3, Float64}=(0.0, 0.0, 1.0),
+)::Int
     α::Float64 = π / num_lobes
-    β::Float64 = asin(0.5 * (ro - rl) * sin(α) / rl)
-    b::Float64 = 2.0 * rl * sin(α + β) / sin(α)
+    θ::Float64 = asin(sin(α) * ((ro-rl)/(2.0*rl)))
+    # ======================
+    #   MAKING UNIT TIP
+    # ======================
+    # Evaluating points
+    C = xyz_centre
+    C1 = C .+ (ro-rl, 0.0, 0.0)
+    C2 = C1 .+ (2.0*rl*cos(α+θ), 2.0*rl*sin(α+θ), 0.0)
+    P1 = C1 .+ (rl, 0.0, 0.0)
+    P2 = C1 .+ (rl*cos(α+θ), rl*sin(α+θ), 0.0)
+    P3 = C2 .+ (-rl*cos(α), -rl*sin(α), 0.0)
+    # Making Gmsh points
+    add_nl_points(tpl) = gmsh.model.occ.add_point(tpl[1], tpl[2], tpl[3])
+    # gm_C::Int    = add_nl_points(C)
+    gm_C1::Int    = add_nl_points(C1)
+    gm_C2::Int    = add_nl_points(C2)
+    gm_P1::Int    = add_nl_points(P1)
+    gm_P2::Int    = add_nl_points(P2)
+    gm_P3::Int    = add_nl_points(P3)
+    # Making Unit Tip Curve
+    arc_11   = gmsh.model.occ.add_circle_arc(gm_P1, gm_C1, gm_P2)
+    arc_21   = gmsh.model.occ.add_circle_arc(gm_P3, gm_C2, gm_P2)
+    arc_12   = gmsh.model.occ.copy([(1, arc_11),])
+    arc_22   = gmsh.model.occ.copy([(1, arc_21),])
+    gmsh.model.occ.mirror(arc_12, 0.0, 1.0, 0.0, -C[2])
+    gmsh.model.occ.mirror(arc_22, 0.0, 1.0, 0.0, -C[2])
+    ref_tip_arc_dim_tags = [arc_22[1], arc_12[1], (1, arc_11), (1, arc_21),]
+    gmsh.model.occ.rotate(ref_tip_arc_dim_tags, C[1], C[2], C[3], normal_vec[1], normal_vec[2], normal_vec[3], theta)
     #
-    circular_arcs_tags::Vector{Int} = Int[]
-    for i in 1:num_lobes
-        θ_i = theta + 2.0 * α * (i - 1)
-        θ_ip1 = theta + ((2.0 * i) - 1) * α
-        push!(
-            circular_arcs_tags,
-            gmsh.model.occ.add_circle(
-                xc + ((ro - rl) * cos(θ_i)), yc + ((ro - rl) * sin(θ_i)), zc,
-                rl, -1, θ_i - α - β, θ_i + α + β
-            ),
-            gmsh.model.occ.add_circle(
-                xc + (b * cos(θ_ip1)), yc + (b * sin(θ_ip1)), zc,
-                rl, -1, π + θ_ip1 - β, π + θ_ip1 + β,
-            )
-        )
+    n_tip_tags::Vector{Int32} = Int32[i[2] for i in ref_tip_arc_dim_tags]
+    for i in 2:num_lobes
+        θ_i = 2.0 * α * (i - 1)
+        ith_tip_arcs = gmsh.model.occ.copy(ref_tip_arc_dim_tags)
+        gmsh.model.occ.rotate(ith_tip_arcs, C[1], C[2], C[3], normal_vec[1], normal_vec[2], normal_vec[3], θ_i)
+        append!(n_tip_tags, [i[2] for i in ith_tip_arcs])
     end
-    nLobeShape_wire_tag = gmsh.model.occ.add_curve_loop(circular_arcs_tags)
+    nLobeShape_wire_tag = gmsh.model.occ.add_curve_loop(n_tip_tags)
     nLobeShape_disc_tag = gmsh.model.occ.add_plane_surface([nLobeShape_wire_tag,])
+    gmsh.model.occ.synchronize()
+    _, curve_tags = gmsh.model.occ.get_curve_loops(nLobeShape_disc_tag)
+    all_curve_tags = gmsh.model.get_entities(1)
+    duplicate_curves = [i for i in all_curve_tags if !(i[2] in curve_tags[1])]
+    gmsh.model.occ.remove(duplicate_curves, true)
+    gmsh.model.occ.synchronize()
     return nLobeShape_disc_tag
 end
 
@@ -251,7 +271,7 @@ function add_nlobeshapes(
     z_min::Float64,
 )::Vector{Int}
     @assert size(xyt_ro_rl_n, 2) == 6 "For n-Lobe shaped fibre, data matrix should contain six columns with xy coordinates of its centre, theta, outer radius, lobe radius and number of lobes respectively"
-    return [make_nlobeshape((ax, ay, z_min), ath, aro, arl, an) for (ax, ay, ath, aro, arl, an) in eachrow(xyt_ro_rl_n)]
+    return [make_nlobeshape((ax, ay, z_min), ath, aro, arl, convert(Int, an)) for (ax, ay, ath, aro, arl, an) in eachrow(xyt_ro_rl_n)]
 end
 
 
