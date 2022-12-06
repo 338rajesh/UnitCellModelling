@@ -201,9 +201,9 @@ function make_nlobeshape(
     nLobeShape_wire_tag = gmsh.model.occ.add_curve_loop(n_tip_tags)
     nLobeShape_disc_tag = gmsh.model.occ.add_plane_surface([nLobeShape_wire_tag,])
     gmsh.model.occ.synchronize()
-    _, curve_tags = gmsh.model.occ.get_curve_loops(nLobeShape_disc_tag)
+    boundary_dimTags = gmsh.model.get_boundary([(2, nLobeShape_disc_tag)], true, false)
     all_curve_tags = gmsh.model.get_entities(1)
-    duplicate_curves = [i for i in all_curve_tags if !(i[2] in curve_tags[1])]
+    duplicate_curves = [i for i in all_curve_tags if !(i in boundary_dimTags)]
     gmsh.model.occ.remove(duplicate_curves, true)
     gmsh.model.occ.synchronize()
     return nLobeShape_disc_tag
