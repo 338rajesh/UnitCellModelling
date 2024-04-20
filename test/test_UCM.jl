@@ -46,7 +46,7 @@ const caps_inc = Inclusion_data(
 const lobular_inc = Inclusion_data(
     volume_fraction=volume_fractions["nLobes"],
     shape=nLobeShape,
-    size_params=Dict(:NLOBES => 4, :EQRAD => Normal(r_mean, r_std), :LOBE_DIST_FACTOR => 0.5,)
+    size_params=Dict(:NLOBES => 4, :EQRAD => Normal(r_mean, r_std), :LOBE_DIST_FACTOR => 0.1,)
 )
 
 const ell_inc = Inclusion_data(
@@ -84,7 +84,7 @@ ruc_model_data = make_unit_cell_model(
     max_ele_size_factor=1/10,   
     mesh_opt_algorithm="Netgen",
     show_mesh_stats=true,
-    show_rve=false,
+    show_rve=true,
     node_renum_algorithm="",
 )
 #

@@ -8,29 +8,21 @@ const C3D4 = "C3D4"
 const C3D6 = "C3D6"
 const C3D8 = "C3D8"
 
+valid_finite_element_types = (CPE3, CPE4, CPS3, CPS4, C3D4, C3D6, C3D8)
+
 
 function apply_mesh_periodicity_constraints(
-    uc::AbstractUnitCell
+    uc::AbstractUnitCell; verbose::Int=0
 )
     dim::Int = dimension(uc)
     parents::Tuple = dim == 2 ? (:XLB, :YLB,) : (:XLB, :YLB, :ZLB)
-    uc_side_lengths = side_lengths(uc)
+    uc_side_lengths = lx, ly, lz = side_lengths(uc)
     for a_parent in parents
+        a = a_parent == :XLB ? lx : 0.0
+        b = a_parent == :YLB ? ly : 0.0
+        c = a_parent == :ZLB ? lz : 0.0
         #
-        affine_matrix = [
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0,
-        ]
-        #
-        if a_parent == :XLB
-            affine_matrix[4] = uc_side_lengths[1]
-        elseif a_parent == :YLB
-            affine_matrix[8] = uc_side_lengths[2]
-        elseif a_parent == :ZLB
-            affine_matrix[12] = uc_side_lengths[3]
-        end
+        affine_matrix = [1.0, 0.0, 0.0, a, 0.0, 1.0, 0.0, b, 0.0, 0.0, 1.0, c, 0.0, 0.0, 0.0, 1.0,]
         #
         if isa(uc, UDC2D)
             pxl, pyl, pxu, pyu = buffer_bbox(uc, a_parent)
@@ -40,28 +32,47 @@ function apply_mesh_periodicity_constraints(
         end
         #
         parent_entities = gmsh.model.get_entities_in_bounding_box(pxl, pyl, pzl, pxu, pyu, pzu, dim - 1)
-        for (ap_dim, ap_tag) in parent_entities
-            apxl, apyl, apzl, apxu, apyu, apzu = gmsh.model.get_bounding_box(ap_dim, ap_tag)
-            apxl += (affine_matrix[4,] - ϵ)
-            apyl += (affine_matrix[8,] - ϵ)
-            apzl += (affine_matrix[12,] - ϵ)
-            apxu += (affine_matrix[4,] + ϵ)
-            apyu += (affine_matrix[8,] + ϵ)
-            apzu += (affine_matrix[12,] + ϵ)
-            chidren_entities = gmsh.model.get_entities_in_bounding_box(
-                apxl, apyl, apzl, apxu, apyu, apzu, dim - 1
-            )
-            for (ac_dim, ac_tag) in chidren_entities
-                (acxl, acyl, aczl, acxu, acyu, aczu) = gmsh.model.get_bounding_box(ac_dim, ac_tag)
+
+        for (ape_dim, ape_tag) in parent_entities
+            # get the bounding box for each sub-entity on the parent entity
+            apse_xl, apse_yl, apse_zl, apse_xu, apse_yu, apse_zu = gmsh.model.get_bounding_box(ape_dim, ape_tag)
+            # Map the bounding box of each sub-entity to the opposite face/edge of child entity
+            acse_xl = apse_xl + a  # - ϵ
+            acse_yl = apse_yl + b  # - ϵ
+            acse_zl = apse_zl + c  # - ϵ
+            acse_xu = apse_xu + a  # + ϵ
+            acse_yu = apse_yu + b  # + ϵ
+            acse_zu = apse_zu + c  # + ϵ
+
+            chidren_sub_entities = gmsh.model.get_entities_in_bounding_box(
+                acse_xl, acse_yl, acse_zl, acse_xu, acse_yu, acse_zu, dim - 1
+            )  
+            # Assuming that a single parent sub-entity, might have many child sub-entities due to numerical precision
+            for (acse_dim, acse_tag) in chidren_sub_entities
+                acse_bbox_1 = gmsh.model.get_bounding_box(acse_dim, acse_tag)
+                (acse_xl_1, acse_yl_1, acse_zl_1, acse_xu_1, acse_yu_1, acse_zu_1) = acse_bbox_1
+                verbose > 10 ? println(
+                    "> $ape_tag: $apse_xl, $apse_yl, $apse_zl, $apse_xu, $apse_yu, $apse_zu"
+                ) : "-"
+                verbose > 10 ? println(
+                    "> $acse_tag: $acse_xl, $acse_yl, $acse_zl, $acse_xu, $acse_yu, $acse_zu"
+                ) : "-"
+                verbose > 10 ? println(
+                    "> $acse_tag: $acse_xl_1, $acse_yl_1, $acse_zl_1, $acse_xu_1, $acse_yu_1, $acse_zu_1"
+                ) : "-"
                 if (
-                    abs(acxl - apxl) < ϵ &&
-                    abs(acyl - apyl) < ϵ &&
-                    abs(aczl - apzl) < ϵ &&
-                    abs(acxu - apxu) < ϵ &&
-                    abs(acyu - apyu) < ϵ &&
-                    abs(aczu - apzu) < ϵ
+                    abs(acse_xl - acse_xl_1) < ϵ &&
+                    abs(acse_yl - acse_yl_1) < ϵ &&
+                    abs(acse_zl - acse_zl_1) < ϵ &&
+                    abs(acse_xu - acse_xu_1) < ϵ &&
+                    abs(acse_yu - acse_yu_1) < ϵ &&
+                    abs(acse_zu - acse_zu_1) < ϵ
                 )
-                    gmsh.model.mesh.set_periodic(dim, [ac_tag,], [ap_tag,], affine_matrix)
+                    gmsh.model.mesh.set_periodic(dim - 1, [acse_tag,], [ape_tag,], affine_matrix)
+                    verbose > 1 ? println(
+                        ">\t * * * Periodic Mesh Constraint is applied for ",
+                        "Parent Tag: $ape_tag and Child Tag: $acse_tag * * * "
+                    ) : "-"
                 end
             end
         end
@@ -76,25 +87,17 @@ function check_generated_ele_types(
     num_tet = convert(Int64, gmsh.option.get_number("Mesh.NbTetrahedra"))  # C3D4
     num_hex = convert(Int64, gmsh.option.get_number("Mesh.NbHexahedra"))  # C3D8
     num_prism = convert(Int64, gmsh.option.get_number("Mesh.NbPrisms"))  # C3D6
-    num_pyramids = convert(Int64, gmsh.option.get_number("Mesh.NbPyramids"))  #C3D5
-    num_trihedra = convert(Int64, gmsh.option.get_number("Mesh.NbTrihedra"))
     num_tri = convert(Int64, gmsh.option.get_number("Mesh.NbTriangles"))  # CPS3 || CPE3
     num_quad = convert(Int64, gmsh.option.get_number("Mesh.NbQuadrangles"))  # CPS4 || CPE4
     if dim == 3
-        if !(:C3D4 in ele_types) && (num_tet > 0)
+        if !("C3D4" in ele_types) && (num_tet > 0)
             @warn "C3D4 / Tet elements are generated which are not requested...!"
         end
-        if !(:C3D6 in ele_types) && (num_prism > 0)
+        if !("C3D6" in ele_types) && (num_prism > 0)
             @warn "C3D6 / Prism elements are generated which are not requested...!"
         end
-        if !(:C3D8 in ele_types) && (num_hex > 0)
+        if !("C3D8" in ele_types) && (num_hex > 0)
             @warn "C3D8 / Brick elements are generated which are not requested...!"
-        end
-        if num_pyramids > 0
-            @warn "Pyramidal elements are generated which are not requested...!"
-        end
-        if num_trihedra > 0
-            @warn "Trihedra elements are generated which are not requested...!"
         end
     else
         if !(:CPS3 in ele_types || CPE3 in ele_types) && (num_tri > 0)
@@ -175,30 +178,20 @@ end
 function generate_mesh(
     uc::AbstractUnitCell,
     mesh_periodicity::Bool,
-    element_types::Tuple{Vararg{Symbol}},
-    extr_dir_num_ele::Vector{Int64},
+    element_types::Tuple{Vararg{String}},
     min_ele_size::Float64,
     max_ele_size::Float64,
-    mesh_opt_algorithm::String,
+    mesh_opt_algorithm::String;
+    verbose::Int=0
 )
     #
     if mesh_periodicity
-        apply_mesh_periodicity_constraints(uc)
+        apply_mesh_periodicity_constraints(uc; verbose=verbose)
     end
     #
-    element_types = begin
-        if (element_types[1:end] == (:DEFAULT,))
-            if isa(uc, UDC2D)
-                (CPS3,)
-            elseif isa(uc, UDC3D)
-                isempty(extr_dir_num_ele) ? (C3D4,) : (C3D6, C3D8,)
-            elseif isa(uc, PRC)
-                (C3D4,)
-            end
-        else
-            element_types
-        end
-    end
+    @assert all([ele_type in valid_finite_element_types for ele_type in element_types]) "
+        Invalid finite element types: $(element_types), expecting one of: $(valid_finite_element_types)
+    "
     # 
     # Setting constraints to get the mesh of desired element types
     if any([i in (:CPS4, :CPE4, :C3D8) for i in element_types])
@@ -216,7 +209,8 @@ function generate_mesh(
     gmsh.model.mesh.generate(dimension(uc))
     gmsh.model.mesh.optimize(mesh_opt_algorithm, true)
     gmsh.model.mesh.remove_duplicate_nodes()
-    gmsh.model.mesh.renumber_nodes()
+    old, new = gmsh.model.mesh.compute_renumbering("RCMK")
+    gmsh.model.mesh.renumber_nodes(old, new)
     #
     check_generated_ele_types(element_types, dimension(uc))
     #
@@ -239,7 +233,7 @@ Returns a dictionary of mesh data with the following key-values pairs
 """
 function get_mesh_data(
     geom_dim::Int,
-    geometry_tags::Vector{Int},
+    geometry_tags::Dict{String, Vector{Int}},
     node_renum_algo::String="",
     verbose::Int=0,
 )::Dict{String,Any}
@@ -281,41 +275,10 @@ function get_mesh_data(
         end
         return element_connectivity
     end
-    mesh_data["matrix_element_connectivity"] = _element_connectivity(geometry_tags[1:1])
-    mesh_data["inclusions_element_connectivity"] = _element_connectivity(geometry_tags[2:end])
-    #
-    # 
-    if !isempty(node_renum_algo)
-        all_ele_conn = merge_ele_conn([
-            mesh_data["matrix_element_connectivity"],
-            mesh_data["inclusions_element_connectivity"],
-        ])
-        if uppercase(node_renum_algo) == "RCM"
-            if verbose > 0
-                println("Initial bandwidth: ", bandwidth(all_ele_conn, dof=1, half_bw=false))
-                println("Renumbering the nodes using reverse Cuthill McKee algorithm...!")
-            end
-            new_nt_order = get_rcm_node_labels(all_ele_conn)
-            mesh_data["matrix_element_connectivity"] = update_element_connectivity(
-                mesh_data["matrix_element_connectivity"], new_nt_order
-            )
-            mesh_data["inclusions_element_connectivity"] = update_element_connectivity(
-                mesh_data["inclusions_element_connectivity"], new_nt_order
-            )
-            mesh_data["all_node_tags"] = [
-                findfirst(isequal(ant), new_nt_order) for ant in mesh_data["all_node_tags"]
-                ]
-            if verbose > 0
-                new_bw = bandwidth(merge_ele_conn([mesh_data["matrix_element_connectivity"],
-                        mesh_data["inclusions_element_connectivity"],]), dof=1, half_bw=false)
-                println("New bandwidth:", new_bw)
-            end
-
-        else
-            @warn "Unable to recognize specified renumbering algorithm $node_renum_algo
-            so, skipping the node renumbering...!"
-        end
-    end
+    ele_con_keys = Dict(k => join([k, "element_connectivity"], "_") for (k, v) in geometry_tags)
+    for (k, v) in geometry_tags
+        mesh_data[ele_con_keys[k]] = _element_connectivity(v)
+    end   
     #
     # Adding mesh Statistics like number of nodes, elements....etc.
     merge!(mesh_data, get_mesh_statistics())

@@ -61,8 +61,29 @@ end
     @assert issubset(uppercase.(keys(inclusions)), prc_inclusions_library)
 end
 
+abstract type AbstractLatticeCell <: AbstractUnitCell end
+
+# @with_kw struct LatticeCell <: AbstractUnitCell
+#     bbox::BBox3D
+#     link_eq_rad::Float64
+#     id::String
+#     centre::Vector{Float64}
+#     @assert link_eq_rad > 0 "Link equivalent radius must be positive."
+# end
+
+@with_kw struct SimpleCubicLattice <: AbstractLatticeCell
+    bbox::BBox3D
+    link_eqr_x::Float64
+    link_eqr_y::Float64
+    link_eqr_z::Float64
+    id::String
+    centre::Vector{Float64}
+    @assert link_eqr_x > 0 && link_eqr_y > 0 && link_eqr_z > 0 "Link equivalent radius must be positive."
+end
+
 const UDC = Union{UDC2D, UDC3D}
-const UnitCell3D = Union{UDC3D, PRC}
+const UnitCell3D = Union{UDC3D, PRC, AbstractLatticeCell}
+const UNIT_CELL = Union{UDC, UnitCell3D}
 
 
 side_lengths(uc::AbstractUnitCell) = side_lengths(uc.bbox)
@@ -71,6 +92,8 @@ dimension(uc::AbstractUnitCell) = begin
     if isa(uc, UDC2D)
         return 2
     elseif isa(uc, UnitCell3D)
+        return 3
+    elseif isa(uc, AbstractLatticeCell)
         return 3
     end
 end
@@ -81,22 +104,28 @@ function buffer_bbox(
     identifier::Symbol=:ALL,
     ϵ::Float64=1e-06, 
 )
-    ucbb = uc.bbox
-    aϵ = abs(ϵ)
+    xlb, ylb, zlb, xub, yub, zub = uc.bbox
     if identifier == :ALL
-        return uc.bbox .+ [-ϵ, -ϵ, -ϵ, ϵ, ϵ, ϵ]
+        return BBox3D(xlb-ϵ, ylb-ϵ, zlb-ϵ, xub+ϵ, yub+ϵ, zub+ϵ)
     elseif identifier == :XLB
-        return BBox3D(ucbb.xlb-aϵ, ucbb.ylb-ϵ, ucbb.zlb-ϵ, ucbb.xlb+aϵ, ucbb.yub+ϵ, ucbb.zub+ϵ)
+        return BBox3D(xlb-ϵ, ylb-ϵ, zlb-ϵ, xlb+ϵ, yub+ϵ, zub+ϵ)
     elseif identifier == :YLB
-        return BBox3D(ucbb.xlb-ϵ, ucbb.ylb-aϵ, ucbb.zlb-ϵ, ucbb.xub+ϵ, ucbb.ylb+aϵ, ucbb.zub+ϵ)
+        return BBox3D(xlb-ϵ, ylb-ϵ, zlb-ϵ, xub+ϵ, ylb+ϵ, zub+ϵ)
     elseif identifier == :ZLB
-        return BBox3D(ucbb.xlb-ϵ, ucbb.ylb-ϵ, ucbb.zlb-aϵ, ucbb.xub+ϵ, ucbb.yub+ϵ, ucbb.zlb+aϵ)
+        return BBox3D(xlb-ϵ, ylb-ϵ, zlb-ϵ, xub+ϵ, yub+ϵ, zlb+ϵ)
     elseif identifier == :XUB
-        return BBox3D(ucbb.xub-aϵ, ucbb.ylb-ϵ, ucbb.zlb-ϵ, ucbb.xub+aϵ, ucbb.yub+ϵ, ucbb.zub+ϵ)
+        return BBox3D(xub-ϵ, ylb-ϵ, zlb-ϵ, xub+ϵ, yub+ϵ, zub+ϵ)
     elseif identifier == :YUB
-        return BBox3D(ucbb.xlb-ϵ, ucbb.yub-aϵ, ucbb.zlb-ϵ, ucbb.xub+ϵ, ucbb.yub+aϵ, ucbb.zub+ϵ)
+        return BBox3D(xlb-ϵ, yub-ϵ, zlb-ϵ, xub+ϵ, yub+ϵ, zub+ϵ)
     elseif identifier == :ZUB
-        return BBox3D(ucbb.xlb-ϵ, ucbb.ylb-ϵ, ucbb.zub-aϵ, ucbb.xub+ϵ, ucbb.yub+ϵ, ucbb.zub+aϵ)
+        return BBox3D(xlb-ϵ, ylb-ϵ, zub-ϵ, xub+ϵ, yub+ϵ, zub+ϵ)
+    # aϵ = abs(ϵ)
+    # return BBox3D(ucbb.xlb-aϵ, ucbb.ylb-ϵ, ucbb.zlb-ϵ, ucbb.xlb+aϵ, ucbb.yub+ϵ, ucbb.zub+ϵ)
+    # return BBox3D(ucbb.xlb-ϵ, ucbb.ylb-aϵ, ucbb.zlb-ϵ, ucbb.xub+ϵ, ucbb.ylb+aϵ, ucbb.zub+ϵ)
+    # return BBox3D(ucbb.xlb-ϵ, ucbb.ylb-ϵ, ucbb.zlb-aϵ, ucbb.xub+ϵ, ucbb.yub+ϵ, ucbb.zlb+aϵ)
+    # return BBox3D(ucbb.xub-aϵ, ucbb.ylb-ϵ, ucbb.zlb-ϵ, ucbb.xub+aϵ, ucbb.yub+ϵ, ucbb.zub+ϵ)
+    # return BBox3D(ucbb.xlb-ϵ, ucbb.yub-aϵ, ucbb.zlb-ϵ, ucbb.xub+ϵ, ucbb.yub+aϵ, ucbb.zub+ϵ)
+    # return BBox3D(ucbb.xlb-ϵ, ucbb.ylb-ϵ, ucbb.zub-aϵ, ucbb.xub+ϵ, ucbb.yub+ϵ, ucbb.zub+aϵ)
     # IDEA if required, write bboxes for edges too...!    
     end
 end
